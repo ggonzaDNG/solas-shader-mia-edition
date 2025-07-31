@@ -157,7 +157,6 @@ void computeVolumetricClouds(inout vec4 vc, in vec3 atmosphereColor, float z1, f
 
 		getDynamicWeather(speed, amount, frequency, thickness, density, detail, height);
 
-		
 		#ifdef DISTANT_HORIZONS
 		float rayLength = thickness * 8.0;
 			  rayLength /= nWorldPos.y * nWorldPos.y * 8.0 + 1.0;
@@ -313,9 +312,10 @@ void computeVolumetricClouds(inout vec4 vc, in vec3 atmosphereColor, float z1, f
 			sparkleColor += vec3(1.3, 0.6, 0.1) * sparkle * streakGlow * 2.0;
 			finalColor += sparkleColor * pow(sparkle, 1.5) * 16.5;
 
-			#ifdef AURORA
-			finalColor = mix(finalColor, vec3(0.4, 2.5, 0.9) * auroraVisibility, pow2(cloudLighting) * auroraVisibility * 0.075);
-			#endif
+			// Remove color tinting because of Auroras since it looks bad in the Abyss. TODO: Maybe only apply to the first layer (closest to the sky)
+			//#ifdef AURORA
+			//finalColor = mix(finalColor, vec3(0.4, 2.5, 0.9) * auroraVisibility, pow2(cloudLighting) * auroraVisibility * 0.075);
+			//#endif
 
 			float opacity = clamp(mix(VC_OPACITY, 0.99, (max(0.0, cameraPosition.y) / layerHeight)), 0.0, 1.0 - wetness * 0.5);
 
