@@ -2,7 +2,6 @@
 
 #define NUM_CLOUD_LAYERS 6 // amount of cloud layers
 #define LAYER_SPACING 300.0 // distance between each layer in blocks
-#define LAYER_HEIGHT_BASE VC_HEIGHT // TODO: when we have a center for each layer, this has to also change to match the decrease in Y level in the abyss
 
 // the last value in the array affects the highest layer in terms of position in Y axis
 const float layersRotationDirections[] = float[](1.0, -1.0, 1.0, -1.0, 1.0, 1.0); // 1 means clockwise -1 anticlockwise
@@ -10,8 +9,6 @@ const float layersRotationSpeeds[] = float[](0.017, 0.029, 0.023, 0.022, 0.034, 
 const float layersInnerRadius[] = float[](40.0, 70.0, 65.0, 90.0, 110.0, 1.0); // value in blocks of how big is the area of the "imaginary" center in each layer
 const float layersOuterRadius[] = float[](400.0, 400.0, 400.0, 400.0, 400.0, 400.0); // value in blocks of how big is each layer in terms of area covered 
 //
-
-#define center_pos_for_each_layer vec2(-30.0, 69.0) // x z coordinates in blocks, TODO: this will soon change so we have a center for each layer
 
 float getSparkle(vec3 pos, float cloudLayer) {
 
@@ -27,7 +24,7 @@ float getSparkle(vec3 pos, float cloudLayer) {
     ) * 50.0; // speed and direction value
 
     vec3 sparklePos = floor((pos + sparkle_movement) * 0.15 + cloudLayer * 10.0);
-    float sparkleSeed = fract(sin(dot(sparklePos, vec3(12.9898, 78.233, 45.164))) * 43758.5453);
+    float sparkleSeed = fract(sin(dot(sparklePos, vec3(12.9898, 7.233, 45.164))) * 43758.5453);
     
     // random spacing, this means only some cells have sparkles
     float active = smoothstep(0.985, 1.0, sparkleSeed);
@@ -40,7 +37,7 @@ float getSparkle(vec3 pos, float cloudLayer) {
     vec3 cellCenter = (sparklePos - cloudLayer * 10.0) / 0.15 - sparkle_movement;
 
     float dist = length(pos - cellCenter);
-    float shape = 1.0 - smoothstep(0.0, 8.5, dist);
+    float shape = 1.0 - smoothstep(0.0, 4.5, dist);
 
     return active * flicker * shape;
 }
@@ -53,6 +50,62 @@ float radialStreakForSparkles(vec2 dir, float intensity, float sharpness, float 
     float streak = cos(angle * spokes) * 0.5 + 0.5;
     streak = pow(streak, sharpness);
     return intensity * streak;
+}
+
+int getSection() {
+    if (cameraPositionInt.x >= 15617 && cameraPositionInt.x <= 17150) { // L1S1
+		return 1;
+	} else if (cameraPositionInt.x >= 32001 && cameraPositionInt.x <= 33534) { // L1S2
+		return 2;
+	} else if (cameraPositionInt.x >= 48385 && cameraPositionInt.x <= 49918) { // L1S3/L2S0
+		return 3;
+	} else if (cameraPositionInt.x >= 64769 && cameraPositionInt.x <= 66302) { // L2S1
+		return 4;
+	} else {
+    	return 0; // sección por defecto
+	}
+}
+
+vec2 getProceduralCenter() {
+
+	// This function generates the centers for each cloud layer. It uses the current position of the camera to generate the correct one. This method is taken from Voxy LOD rendering mod.
+	// TODO: find a way to make it not snap when traveling 256 blocks in x axis, not too noticeable in survival tho.
+
+    int sectionIndex = int(floor((cameraPosition.y + 256.0) / 512.0));
+    
+    float baseX = 16384.0 * float(sectionIndex);
+	float interval = 256.0;
+	float zPos = 68.0;
+	float section = getSection();
+
+    vec2 cloudCenter = floor((vec2(cameraPosition.x - baseX, zPos) + interval * 0.5) / interval) * interval;
+
+    cloudCenter.x += baseX;
+
+    return cloudCenter;
+}
+
+
+float getCloudBaseHeight() {
+	
+	// This function changes the base height (Y coord of the lowest cloud layer) of clouds to compensate going down the abyss.
+
+	float height = -1300.0; // Orth, section 0
+	int currentSection = getSection();
+	if (currentSection == 1) { // L1S1
+		height = -788.0;
+	} else if (currentSection == 2) { // L1S2
+		height = -276.0;
+	} else if (currentSection == 3) { // L1S3/L2S0
+		height = 236.0;
+	} else if (currentSection == 4) { // L2S1
+		height = 788.0;
+	} else if (currentSection == 5) { // L2S2/L3S0
+		height = 1300.0;
+	} else if (currentSection == 6) { // L3S1
+		height = 1812.0;
+	}
+	return height;
 }
 
 float texture2DShadow(sampler2D shadowtex, vec3 shadowPos) {
@@ -80,14 +133,15 @@ void getCloudSample(vec2 rayPos, vec2 wind, float attenuation, float amount, flo
 	// We also rotate it because it looks cool and more alive.
 
 	//
-	vec2 centeredPos = rayPos - center_pos_for_each_layer;
+	vec2 cloudCenter = getProceduralCenter();
+	vec2 centeredPos = rayPos - cloudCenter;
 
 	float angle = frameTimeCounter * rotationSpeed * rotationDirection;
 	mat2 rotation = mat2(cos(angle), -sin(angle), sin(angle), cos(angle));
 	centeredPos = rotation * centeredPos;
-	rayPos = centeredPos + center_pos_for_each_layer;
+	rayPos = centeredPos + cloudCenter;
 
-	vec2 dirToCenter = normalize(rayPos - center_pos_for_each_layer);
+	vec2 dirToCenter = normalize(rayPos - cloudCenter);
 	float radialWave = sin(length(centeredPos) * 0.1 + noiseLayer * 3.14) * 10.0;
 	rayPos += dirToCenter * radialWave;
 
@@ -196,8 +250,12 @@ void computeVolumetricClouds(inout vec4 vc, in vec3 atmosphereColor, float z1, f
 		
 		// we loop for each layer of clouds
 		for (int l = 0; l < NUM_CLOUD_LAYERS; l++) {
+			if (vc.a >= 0.99) break;
+
 			int layer = NUM_CLOUD_LAYERS - 1 - l; // we go from highest layer to lowest
-			float layerHeight = LAYER_HEIGHT_BASE + layer * LAYER_SPACING;
+
+			float layer_height_base = getCloudBaseHeight();
+			float layerHeight = layer_height_base + layer * LAYER_SPACING;
 			
 			// we move the values inside the loop to modify them for each layer
 			float cloudTop = layerHeight + thickness * 10.0;
@@ -236,7 +294,8 @@ void computeVolumetricClouds(inout vec4 vc, in vec3 atmosphereColor, float z1, f
 					#endif
 
 					// MIA
-					float abyssDist = length(rayPos.xz - center_pos_for_each_layer);
+					vec2 cloudCenter = getProceduralCenter();
+					float abyssDist = length(rayPos.xz - cloudCenter);
 					float fadeInner = smoothstep(layersInnerRadius[layer], layersInnerRadius[layer] + 60.0, abyssDist);
 					float fadeOuter = smoothstep(layersOuterRadius[layer] + 80.0, layersOuterRadius[layer], abyssDist);
 					float abyssFade = fadeInner * fadeOuter;
@@ -306,10 +365,10 @@ void computeVolumetricClouds(inout vec4 vc, in vec3 atmosphereColor, float z1, f
 			vec3 finalColor = mix(cloudAmbientColor, cloudLightColor, cloudLighting) * (1.0 + lightning * 64.0);
 			
 			float sparkle = getSparkle(rayPos * 0.5, float(layer));
-			vec3 sparkleColor = vec3(1.3, 0.6, 0.1) * sparkle;
-			vec2 sparkleDir = normalize(rayPos.xy - cameraPosition.xy);
+			vec3 sparkleColor = vec3(1.0, 0.52, 0.3) * sparkle;
+			vec2 sparkleDir = normalize(rayPos.xy - cameraPositionInt.xy);
 			float streakGlow = radialStreakForSparkles(sparkleDir, 1.0, 6.0, 8.0);
-			sparkleColor += vec3(1.3, 0.6, 0.1) * sparkle * streakGlow * 2.0;
+			sparkleColor += vec3(3.0, 0.52, 0.3) * sparkle * streakGlow * 2.0;
 			finalColor += sparkleColor * pow(sparkle, 1.5) * 16.5;
 
 			// Remove color tinting because of Auroras since it looks bad in the Abyss. TODO: Maybe only apply to the first layer (closest to the sky)

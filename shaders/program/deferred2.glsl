@@ -54,6 +54,7 @@ uniform ivec2 eyeBrightnessSmooth;
 uniform vec3 skyColor;
 uniform vec3 fogColor;
 uniform vec3 cameraPosition;
+uniform ivec3 cameraPositionInt;
 
 #ifdef VC
 uniform vec4 lightningBoltPosition;
