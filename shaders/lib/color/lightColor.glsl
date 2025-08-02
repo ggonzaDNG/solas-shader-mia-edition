@@ -1,5 +1,7 @@
+#include "/lib/util/AbyssUtil.glsl"
 #ifdef OVERWORLD
 uniform float isDesert, isMesa, isSwamp, isMushroom, isSavanna, isJungle;
+int section = getSection();
 
 float timeBrightnessSqrt = sqrt(timeBrightness);
 float mefade = 1.0 - clamp(abs(timeAngle - 0.5) * 8.0 - 1.5, 0.0, 1.0);
@@ -17,8 +19,11 @@ float lightSunIntensity = mix(mix(LIGHTINTENSITY_SS * LIGHTINTENSITY_SS, LIGHTIN
 float lightSunIntensity = mix(mix(LIGHTINTENSITY_SS, LIGHTINTENSITY_ME, timeBrightnessSqrt), LIGHTINTENSITY_D, timeBrightness);
 #endif
 
-vec3 lightSun = normalize(mix(pow((colorSun + 0.055) / 1.055, vec3(2.2)), colorSun / 12.92, step(colorSun, vec3(0.04045)))) * lightSunIntensity;
-vec3 lightNight = mix(pow((colorNight + 0.055) / 1.055, vec3(2.2)), colorNight / 12.92, step(colorNight, vec3(0.04045))) * LIGHTINTENSITY_N * 0.5;
+vec3 baseLightSun = normalize(mix(pow((colorSun + 0.055) / 1.055, vec3(2.2)), colorSun / 12.92, step(colorSun, vec3(0.04045))));
+vec3 lightSun = baseLightSun * (section > 3 ? 0.0 : lightSunIntensity); // fix for light in dark layers
+
+vec3 baselightNight = mix(pow((colorNight + 0.055) / 1.055, vec3(2.2)), colorNight / 12.92, step(colorNight, vec3(0.04045))) * LIGHTINTENSITY_N * 0.5;
+vec3 lightNight = baselightNight * (section > 3 ? 0.0 : 1.0); // fix for light in dark layers
 
 #ifdef PURPLE_MORNINGS
 vec3 lightColRaw = mix(lightNight, mix(vec3(lightSun.r, lightSun.g, lightSun.b * (2.0 - clamp((mefade + timeBrightness) * 5.0, 0.0, 1.0))), normalize(skyColor + 0.0001), 0.1), sunVisibility * sunVisibility);

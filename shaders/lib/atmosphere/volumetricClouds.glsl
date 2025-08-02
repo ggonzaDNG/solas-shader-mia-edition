@@ -1,16 +1,19 @@
 // Edited clouds for the Mine in Abyss SMP.
+// i hate this fucking language man, fuck c and long live to those who know how to code well with it
+
+#include "/lib/util/AbyssUtil.glsl"
 
 #define NUM_CLOUD_LAYERS 6 // amount of cloud layers
 #define LAYER_SPACING 300.0 // distance between each layer in blocks
 
 // the last value in the array affects the highest layer in terms of position in Y axis
 const float layersRotationDirections[] = float[](1.0, -1.0, 1.0, -1.0, 1.0, 1.0); // 1 means clockwise -1 anticlockwise
-const float layersRotationSpeeds[] = float[](0.017, 0.029, 0.023, 0.022, 0.034, 0.015); // self-explanatory
-const float layersInnerRadius[] = float[](40.0, 70.0, 65.0, 90.0, 110.0, 1.0); // value in blocks of how big is the area of the "imaginary" center in each layer
-const float layersOuterRadius[] = float[](400.0, 400.0, 400.0, 400.0, 400.0, 400.0); // value in blocks of how big is each layer in terms of area covered 
+const float layersRotationSpeeds[] = float[](0.0017, 0.0019, 0.0013, 0.0012, 0.0014, 0.0015); // self-explanatory
+const float layersInnerRadius[] = float[](1.0, 300.0, 300.0, 300.0, 300.0, 300.0); // value in blocks of how big is the area of the "imaginary" center in each layer
+const float layersOuterRadius[] = float[](200.0, 400.0, 400.0, 400.0, 400.0, 400.0); // value in blocks of how big is each layer in terms of area covered 
 //
 
-float getSparkle(vec3 pos, float cloudLayer) {
+float getSparkle(vec3 pos, float cloudLayer, float amount) {
 
 	/*
 	We generate a "cell" inside each cloud and generate sparkles in them.
@@ -27,7 +30,7 @@ float getSparkle(vec3 pos, float cloudLayer) {
     float sparkleSeed = fract(sin(dot(sparklePos, vec3(12.9898, 7.233, 45.164))) * 43758.5453);
     
     // random spacing, this means only some cells have sparkles
-    float active = smoothstep(0.985, 1.0, sparkleSeed);
+    float active = smoothstep(amount, 1.0, sparkleSeed);
     
     // blinking animation
     float speed = 0.5 + 0.5 * fract(sin(dot(sparklePos, vec3(5.2, 9.3, 2.7))) * 12.345);
@@ -50,20 +53,6 @@ float radialStreakForSparkles(vec2 dir, float intensity, float sharpness, float 
     float streak = cos(angle * spokes) * 0.5 + 0.5;
     streak = pow(streak, sharpness);
     return intensity * streak;
-}
-
-int getSection() {
-    if (cameraPositionInt.x >= 15617 && cameraPositionInt.x <= 17150) { // L1S1
-		return 1;
-	} else if (cameraPositionInt.x >= 32001 && cameraPositionInt.x <= 33534) { // L1S2
-		return 2;
-	} else if (cameraPositionInt.x >= 48385 && cameraPositionInt.x <= 49918) { // L1S3/L2S0
-		return 3;
-	} else if (cameraPositionInt.x >= 64769 && cameraPositionInt.x <= 66302) { // L2S1
-		return 4;
-	} else {
-    	return 0; // sección por defecto
-	}
 }
 
 vec2 getProceduralCenter() {
@@ -91,19 +80,25 @@ float getCloudBaseHeight() {
 	// This function changes the base height (Y coord of the lowest cloud layer) of clouds to compensate going down the abyss.
 
 	float height = -1300.0; // Orth, section 0
-	int currentSection = getSection();
-	if (currentSection == 1) { // L1S1
+	int section = getSection();
+	if (section == 1) { // L1S1
 		height = -788.0;
-	} else if (currentSection == 2) { // L1S2
+	} else if (section == 2) {
 		height = -276.0;
-	} else if (currentSection == 3) { // L1S3/L2S0
+	} else if (section == 3) {
 		height = 236.0;
-	} else if (currentSection == 4) { // L2S1
+	} else if (section == 4) {
 		height = 788.0;
-	} else if (currentSection == 5) { // L2S2/L3S0
-		height = 1300.0;
-	} else if (currentSection == 6) { // L3S1
-		height = 1812.0;
+	} else if (section == 5) {
+		height = -1150.0;
+	} else if (section == 6) {
+		height = -788.0;
+	} else if (section == 7) {
+		height = -788.0;
+	} else if (section == 8) {
+		height = 80.0;
+	} else if (section >= 9) {
+		height = 10000.0;
 	}
 	return height;
 }
@@ -142,7 +137,7 @@ void getCloudSample(vec2 rayPos, vec2 wind, float attenuation, float amount, flo
 	rayPos = centeredPos + cloudCenter;
 
 	vec2 dirToCenter = normalize(rayPos - cloudCenter);
-	float radialWave = sin(length(centeredPos) * 0.1 + noiseLayer * 3.14) * 10.0;
+	float radialWave = sin(length(centeredPos) * 0.1 + noiseLayer * 3.14) * 6.0;
 	rayPos += dirToCenter * radialWave;
 
 	// we apply an offset to the noise for each layer so that they are not all the same
@@ -179,8 +174,8 @@ void getCloudSample(vec2 rayPos, vec2 wind, float attenuation, float amount, flo
 
 void computeVolumetricClouds(inout vec4 vc, in vec3 atmosphereColor, float z1, float dither, inout float currentDepth) {
 	//Total visibility
-	float visibility = caveFactor * int(0.56 < z1);
-
+	float visibility = 1.0;
+	int section = getSection();
 	#if MC_VERSION >= 11900
 	visibility *= 1.0 - darknessFactor;
 	#endif
@@ -296,7 +291,7 @@ void computeVolumetricClouds(inout vec4 vc, in vec3 atmosphereColor, float z1, f
 					// MIA
 					vec2 cloudCenter = getProceduralCenter();
 					float abyssDist = length(rayPos.xz - cloudCenter);
-					float fadeInner = smoothstep(layersInnerRadius[layer], layersInnerRadius[layer] + 60.0, abyssDist);
+					float fadeInner = smoothstep(layersInnerRadius[layer], layersInnerRadius[layer] + 600.0, abyssDist);
 					float fadeOuter = smoothstep(layersOuterRadius[layer] + 80.0, layersOuterRadius[layer], abyssDist);
 					float abyssFade = fadeInner * fadeOuter;
 					//
@@ -357,18 +352,32 @@ void computeVolumetricClouds(inout vec4 vc, in vec3 atmosphereColor, float z1, f
 			//Final color calculations
 			float morningEveningFactor = mix(1.0, 0.66, sqrt(sunVisibility) * (1.0 - timeBrightnessSqrt));
 
-			vec3 cloudAmbientColor = mix(ambientCol, atmosphereColor * atmosphereColor, 0.4 * sunVisibility);
+			vec3 cloudAmbientColor = mix(ambientCol, atmosphereColor * atmosphereColor, 1.0 * sunVisibility);
 				cloudAmbientColor *= 0.4 + sunVisibility * sunVisibility * (0.2 - wetness * 0.2);
 			vec3 cloudLightColor = mix(lightCol, mix(lightCol, atmosphereColor * 2.25, 0.25 * (sunVisibility + timeBrightness)) * atmosphereColor * 2.25, sunVisibility);
-				cloudLightColor *= (1.0 + scattering) * morningEveningFactor;
+				cloudLightColor *= (1.0 + scattering);
+
+			if (section >= 5 && section <= 8) { // only for inv forest and l3
+				cloudAmbientColor = vec3(0.27, 0.27, 0.27);
+				cloudLightColor = vec3(1.0, 1.0, 1.0);
+			}
 
 			vec3 finalColor = mix(cloudAmbientColor, cloudLightColor, cloudLighting) * (1.0 + lightning * 64.0);
-			
-			float sparkle = getSparkle(rayPos * 0.5, float(layer));
+
+			float depthDarkenFactor = clamp(-layerHeight / 1400.0, 0.0, 3.0);
+
+			finalColor = mix(finalColor, vec3(0.0), depthDarkenFactor);
+
+			float section = getSection();
+			float amount = 0.975;
+			if (layer == 0 || layer == 1 && section == 0.0) {
+				amount = 0.930;
+			}
+			float sparkle = getSparkle(rayPos * 0.5, float(layer), amount);
 			vec3 sparkleColor = vec3(1.0, 0.52, 0.3) * sparkle;
 			vec2 sparkleDir = normalize(rayPos.xy - cameraPositionInt.xy);
 			float streakGlow = radialStreakForSparkles(sparkleDir, 1.0, 6.0, 8.0);
-			sparkleColor += vec3(3.0, 0.52, 0.3) * sparkle * streakGlow * 2.0;
+			sparkleColor += vec3(2.0, 0.52, 0.3) * sparkle * streakGlow * 2.0;
 			finalColor += sparkleColor * pow(sparkle, 1.5) * 16.5;
 
 			// Remove color tinting because of Auroras since it looks bad in the Abyss. TODO: Maybe only apply to the first layer (closest to the sky)

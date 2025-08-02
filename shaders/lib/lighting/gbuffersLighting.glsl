@@ -1,5 +1,6 @@
 uniform vec4 lightningBoltPosition;
 
+
 #include "/lib/lighting/lightning.glsl"
 
 #ifdef VC_SHADOWS
@@ -19,6 +20,7 @@ void gbuffersLighting(inout vec4 albedo, in vec3 screenPos, in vec3 viewPos, in 
     float vanillaDiffuse = (0.25 * NoU + 0.75) + (0.667 - abs(NoE)) * (1.0 - abs(NoU)) * 0.15;
           vanillaDiffuse *= vanillaDiffuse;
     #ifdef OVERWORLD
+            
           vanillaDiffuse = mix(1.0, vanillaDiffuse, lightmap.y);
     #endif
 

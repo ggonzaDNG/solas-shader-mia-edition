@@ -1,3 +1,6 @@
+#include "/lib/util/AbyssUtil.glsl"
+#include "/lib/util/AbyssSharedUniforms.glsl"
+
 //1.19 Darkness Fog
 #if MC_VERSION >= 11900
 void getDarknessFog(inout vec3 color, float lViewPos) {
@@ -31,6 +34,7 @@ void getDenseFog(inout vec3 color, float lViewPos) {
 
 //Normal Fog
 #ifndef END
+
 void getNormalFog(inout vec3 color, in vec3 viewPos, in vec3 worldPos, in vec3 atmosphereColor, in float lViewPos, in float lWorldPos) {
     #if defined DISTANT_HORIZONS && (defined DEFERRED || defined DH_WATER || defined GBUFFERS_WATER)
     float farPlane = dhRenderDistance * 0.6;
@@ -57,12 +61,48 @@ void getNormalFog(inout vec3 color, in vec3 viewPos, in vec3 worldPos, in vec3 a
 	fogDensity = mix(fogDensity, 3.0, isPaleGarden);
 	#endif
 
+	//
+	float section = getSection();
+	float distanceAdjustment = 800.0;
+	float distanceAdjustment1 = 350.0;
+	if (section == 1) {
+		distanceAdjustment = 700.0;
+		distanceAdjustment1 = 450.0;
+	} else if (section == 2) {
+		distanceAdjustment = 600.0;
+		distanceAdjustment1 = 850.0;
+	} else if (section == 3) {
+		distanceAdjustment = 600.0;
+		distanceAdjustment1 = 850.0;
+	} else if (section == 5) {
+		distanceAdjustment = 1100.0;
+	} else if (section == 6) {
+		distanceAdjustment = 800.0;
+	} else if (section == 7) {
+		distanceAdjustment = 800.0;
+	} else if (section == 8) {
+		distanceAdjustment = 1000.0;
+	}
+
+	float abyssDepth = clamp((-worldPos.y - cameraPosition.y) - distanceAdjustment1, 0.0, 2048.0);
+	float depthDarkening = 0.00002 + (abyssDepth / distanceAdjustment);
+	fogDensity *= depthDarkening;
+
     float fog = 1.0 - exp(-(0.005 + wetness * caveFactor * 0.0025) * pow(lViewPos, 0.85) * fogDistance);
 		  fog = clamp(fog * fogDensity * fogAltitude, 0.0, 1.0);
 
-	vec3 lightVec = sunVec * ((timeAngle < 0.5325 || timeAngle > 0.9675) ? 1.0 : -1.0);
-	vec3 fogCol = mix(caveMinLightCol * atmosphereColor, mix(normalize(skyColor + 0.000001), atmosphereColor, min(1.0, 1.5 - sunVisibility)), caveFactor);
+	vec3 animatedBlue = vec3(0.04, 0.11, 0.18);
 
+
+	float topFade = clamp((worldPos.y + cameraPosition.y + 128.0) / 256.0, 0.0, 1.0);
+	vec3 baseFogCol = mix(animatedBlue, vec3(0.02, 0.34, 0.61), 1.0 - topFade);
+	if (section >= 2 && section <= 12) {
+		animatedBlue = vec3(0.59, 0.59, 0.59);
+		baseFogCol = mix(animatedBlue, vec3(0.59, 0.59, 0.59), 1.0 - topFade);
+	}
+	vec3 fogCol = mix(baseFogCol, vec3(0.0), clamp(abyssDepth / 1024.0, 0.0, 1.0));
+	//
+	
 	//Distant Fade
 	#ifdef DISTANT_FADE
 	if (isEyeInWater < 0.5) {
