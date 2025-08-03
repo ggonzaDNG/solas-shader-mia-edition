@@ -62,7 +62,6 @@ uniform vec3 skyColor;
 uniform vec3 fogColor;
 uniform vec3 cameraPosition;
 
-
 uniform sampler2D texture;
 uniform sampler2D noisetex;
 

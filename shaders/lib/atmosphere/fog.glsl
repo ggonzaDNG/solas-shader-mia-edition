@@ -34,7 +34,6 @@ void getDenseFog(inout vec3 color, float lViewPos) {
 
 //Normal Fog
 #ifndef END
-
 void getNormalFog(inout vec3 color, in vec3 viewPos, in vec3 worldPos, in vec3 atmosphereColor, in float lViewPos, in float lWorldPos) {
     #if defined DISTANT_HORIZONS && (defined DEFERRED || defined DH_WATER || defined GBUFFERS_WATER)
     float farPlane = dhRenderDistance * 0.6;
@@ -93,9 +92,9 @@ void getNormalFog(inout vec3 color, in vec3 viewPos, in vec3 worldPos, in vec3 a
 
 	vec3 animatedBlue = vec3(0.04, 0.11, 0.18);
 
-
 	float topFade = clamp((worldPos.y + cameraPosition.y + 128.0) / 256.0, 0.0, 1.0);
 	vec3 baseFogCol = mix(animatedBlue, vec3(0.02, 0.34, 0.61), 1.0 - topFade);
+
 	if (section >= 2 && section <= 12) {
 		animatedBlue = vec3(0.59, 0.59, 0.59);
 		baseFogCol = mix(animatedBlue, vec3(0.59, 0.59, 0.59), 1.0 - topFade);
@@ -105,6 +104,7 @@ void getNormalFog(inout vec3 color, in vec3 viewPos, in vec3 worldPos, in vec3 a
 		animatedBlue = vec3(0.27, 0.27, 0.27);
 		baseFogCol = mix(animatedBlue, vec3(0.27, 0.27, 0.27), 1.0 - topFade);
 	}
+
 	vec3 fogCol = mix(baseFogCol, vec3(0.0), clamp(abyssDepth / 1024.0, 0.0, 1.0));
 	//
 	
