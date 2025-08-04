@@ -14,14 +14,14 @@ const float layersOuterRadius[] = float[](200.0, 400.0, 400.0, 400.0, 400.0, 400
 
 const float layer3LayersInnerRadius[] = float[](20.0, 20.0, 20.0, 20.0, 20.0, 20.0);
 const float layer3LayersOuterRadius[] = float[](250.0, 250.0, 250.0, 250.0, 250.0, 850.0);
+
+int section = getSection();
 //
 
 float getSparkle(vec3 pos, float cloudLayer, float amount) {
 
-	/*
-	We generate a "cell" inside each cloud and generate sparkles in them.
-	Not every "cell" has sparkles, only the ones that are "active".
-	*/
+	// We generate a "cell" inside each cloud and generate sparkles in them.
+	// Not every "cell" has sparkles, only the ones that are "active".
 
     vec3 sparkle_movement = vec3(
         sin(frameTimeCounter * 0.2 + cloudLayer * 3.0),
@@ -62,7 +62,7 @@ vec2 getCloudCenter() {
 
 	// Align cloud centers to Abyss layer player is in.
 
-	int section = getSection();
+	int section = section;
 	int offsetX = cameraPositionInt.x - -23; // orth
 	int offsetZ = 67; // orth
 
@@ -110,7 +110,7 @@ float getCloudBaseHeight() {
 	// This function changes the base height (Y coord of the lowest cloud layer) of clouds to compensate going down the abyss.
 
 	float height = -1300.0; // Orth, section 0
-	int section = getSection();
+	int section = section;
 
 	switch (section) {
 		case 1: // L1S1
@@ -230,7 +230,7 @@ void computeVolumetricClouds(inout vec4 vc, in vec3 atmosphereColor, float z1, f
 	//Total visibility
 	float visibility = 1.0;
 
-	int section = getSection();
+	int section = section;
 
 	#if MC_VERSION >= 11900
 	visibility *= 1.0 - darknessFactor;
@@ -345,20 +345,19 @@ void computeVolumetricClouds(inout vec4 vc, in vec3 atmosphereColor, float z1, f
 					#endif
 
 					// MIA
-
 					vec2 cloudCenter = getCloudCenter();
 					float abyssDist = length(rayPos.xz - cloudCenter);
 					float fadeInner = smoothstep(layersInnerRadius[layer], layersInnerRadius[layer] + 200.0, abyssDist);
 					float fadeOuter = smoothstep(layersOuterRadius[layer] + 80.0, layersOuterRadius[layer], abyssDist);
+					
 					if (section >= 5) {
 						fadeInner = smoothstep(layer3LayersInnerRadius[layer], layer3LayersInnerRadius[layer] + 200.0, abyssDist);
 						fadeOuter = smoothstep(layer3LayersOuterRadius[layer] + 80.0, layer3LayersOuterRadius[layer], abyssDist);
+						amount = 9.4;
+						density = 10.2;
 					}
-					float abyssFade = fadeInner * fadeOuter;
 
-					if (abyssDist < layer3LayersInnerRadius[layer]) {
-						continue;
-					}
+					float abyssFade = fadeInner * fadeOuter;
 					//
 
 					vec3 worldPos = rayPos - cameraPosition;
@@ -388,11 +387,6 @@ void computeVolumetricClouds(inout vec4 vc, in vec3 atmosphereColor, float z1, f
 					float noise = 0.0;
 					float attenuation = smoothstep(layerHeight, cloudTop, rayPos.y);
 
-					if (section >= 5) {
-						amount = 9.4;
-						density = 10.2;
-					}
-
 					// MIA
 					getCloudSample(rayPos.xz, wind, attenuation, amount, frequency, thickness, density, detail, noise, layersRotationSpeeds[layer], layersRotationDirections[layer], float(layer));
 					//
@@ -406,7 +400,8 @@ void computeVolumetricClouds(inout vec4 vc, in vec3 atmosphereColor, float z1, f
 					cloudLighting = mix(cloudLighting, sampleLighting, noise * (1.0 - cloud * cloud));
 					cloud = mix(cloud, 1.0, noise);
 
-					if (layer != 5 && section < 8) noise *= pow(abyssFade, 0.7);
+					if (layer != 5 && section < 5) noise *= pow(abyssFade, 0.7); // this makes the highest layer of clouds (in Y axis) cover more area
+
 					noise *= fog;
 
 					cloudAlpha = mix(cloudAlpha, 1.0, noise);
@@ -435,53 +430,40 @@ void computeVolumetricClouds(inout vec4 vc, in vec3 atmosphereColor, float z1, f
 			vec3 finalColor = mix(cloudAmbientColor, cloudLightColor, cloudLighting) * (1.0 + lightning * 64.0);
 
 			float depthDarkenFactor = clamp(-layerHeight / 1400.0, 0.1, 1.0);
-			
-			if (section < 5) {
-				vec3 abyssBlue = vec3(0.12, 0.12, 0.39);
-				finalColor = mix(finalColor, abyssBlue, depthDarkenFactor);
-				//finalColor *= vec3(0.23, 0.27, 0.57);
-			} else if (section >= 5 && layer != 5) {
-				finalColor *= vec3(1.4, 1.4, 1.4);
-			}
-	
-			float section = getSection();
-			float amount = 0.975;
+
+			float amount = 0.975; // less amount of sparkles for upper layers of clouds
 			
 			if (layer == 0 || layer == 1 && section == 0) {
-				amount = 0.930;
+				amount = 0.930; // higher amount of sparkles for the last two layers of clouds
 			}
-
-			float sparkle = getSparkle(rayPos * 0.5, float(layer), amount);
-			vec3 sparkleColor = vec3(1.0, 0.52, 0.3) * sparkle;
-			vec2 sparkleDir = normalize(rayPos.xy - cameraPositionInt.xy);
-			float streakGlow = radialStreakForSparkles(sparkleDir, 1.0, 6.0, 8.0);
-			sparkleColor += vec3(2.0, 0.52, 0.3) * sparkle * streakGlow * 2.0;
 
 			if (section < 5) {
+				vec3 blueGradient = vec3(0.02, 0.34, 0.61); // same as fog.glsl
+				finalColor = mix(finalColor, blueGradient, depthDarkenFactor);
+
+				float sparkle = getSparkle(rayPos * 0.5, float(layer), amount);
+				vec3 sparkleColor = vec3(1.0, 0.52, 0.3) * sparkle;
+				vec2 sparkleDir = normalize(rayPos.xy - cameraPositionInt.xy);
+				float streakGlow = radialStreakForSparkles(sparkleDir, 1.0, 6.0, 6.0);
+				sparkleColor += vec3(1.0, 0.52, 0.3) * sparkle * streakGlow * 2.0;
 				finalColor += sparkleColor * pow(sparkle, 1.5) * 16.5; // only sparkles for upper layers
+
+			} else if (section >= 5 && layer != 5) {
+				finalColor *= vec3(1.4, 1.4, 1.4); // we make them more white in layer 2 and layer 3 except the highest layer of clouds
 			}
 
-			// Remove color tinting because of Auroras since it looks bad in the Abyss. TODO: Maybe only apply to the first layer (closest to the sky)
-			//#ifdef AURORA
-			//finalColor = mix(finalColor, vec3(0.4, 2.5, 0.9) * auroraVisibility, pow2(cloudLighting) * auroraVisibility * 0.075);
-			//#endif
-
 			float used_opacity = VC_OPACITY;
+			
 			if (section >= 5) {
 				used_opacity = 0.8;
 			}
 
 			float opacity = clamp(mix(used_opacity, 0.99, (max(0.0, cameraPosition.y) / layerHeight)), 0.0, 1.0 - wetness * 0.5);
 
-			//#if MC_VERSION >= 12104
-			//opacity = mix(opacity, opacity * 0.5, isPaleGarden);
-			//#endif
-
 			float finalAlpha = cloudAlpha * opacity * visibility;
 			
 			vc.rgb = mix(vc.rgb, finalColor, finalAlpha * (1.0 - vc.a));
 			vc.a = clamp(vc.a + finalAlpha * (1.0 - vc.a), 0.0, 1.0);
-			
 			}
 		}
 	}

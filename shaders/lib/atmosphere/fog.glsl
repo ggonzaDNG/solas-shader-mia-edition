@@ -1,6 +1,8 @@
 #include "/lib/util/AbyssUtil.glsl"
 #include "/lib/util/AbyssSharedUniforms.glsl"
 
+int section = getSection();
+
 //1.19 Darkness Fog
 #if MC_VERSION >= 11900
 void getDarknessFog(inout vec3 color, float lViewPos) {
@@ -61,7 +63,7 @@ void getNormalFog(inout vec3 color, in vec3 viewPos, in vec3 worldPos, in vec3 a
 	#endif
 
 	//
-	float section = getSection();
+	int section = section;
 	float distanceAdjustment = 800.0;
 	float distanceAdjustment1 = 350.0;
 	if (section == 1) {
@@ -90,19 +92,19 @@ void getNormalFog(inout vec3 color, in vec3 viewPos, in vec3 worldPos, in vec3 a
     float fog = 1.0 - exp(-(0.005 + wetness * caveFactor * 0.0025) * pow(lViewPos, 0.85) * fogDistance);
 		  fog = clamp(fog * fogDensity * fogAltitude, 0.0, 1.0);
 
-	vec3 animatedBlue = vec3(0.04, 0.11, 0.18);
+	vec3 blueGradient = vec3(0.04, 0.11, 0.2);
 
 	float topFade = clamp((worldPos.y + cameraPosition.y + 128.0) / 256.0, 0.0, 1.0);
-	vec3 baseFogCol = mix(animatedBlue, vec3(0.02, 0.34, 0.61), 1.0 - topFade);
-
-	if (section >= 2 && section <= 12) {
-		animatedBlue = vec3(0.59, 0.59, 0.59);
-		baseFogCol = mix(animatedBlue, vec3(0.59, 0.59, 0.59), 1.0 - topFade);
-	}
+	vec3 baseFogCol = mix(blueGradient, vec3(0.02, 0.34, 0.61), 1.0 - topFade);
 
 	if (section >= 5 && section <= 8) {
 		animatedBlue = vec3(0.27, 0.27, 0.27);
-		baseFogCol = mix(animatedBlue, vec3(0.27, 0.27, 0.27), 1.0 - topFade);
+		baseFogCol = mix(blueGradient, vec3(0.27, 0.27, 0.27), 1.0 - topFade); // closer to gray from L3S1 to L4S1
+	}
+
+	if (section > 8 && section <= 12) {
+		animatedBlue = vec3(0.59, 0.59, 0.59);
+		baseFogCol = mix(blueGradient, vec3(0.59, 0.59, 0.59), 1.0 - topFade); // closer to white at L4S2
 	}
 
 	vec3 fogCol = mix(baseFogCol, vec3(0.0), clamp(abyssDepth / 1024.0, 0.0, 1.0));
