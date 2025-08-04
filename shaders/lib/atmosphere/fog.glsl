@@ -1,7 +1,7 @@
 #include "/lib/util/AbyssUtil.glsl"
 #include "/lib/util/AbyssSharedUniforms.glsl"
 
-int section = getSection();
+int sectionPlayer = getSection();
 
 //1.19 Darkness Fog
 #if MC_VERSION >= 11900
@@ -63,7 +63,7 @@ void getNormalFog(inout vec3 color, in vec3 viewPos, in vec3 worldPos, in vec3 a
 	#endif
 
 	//
-	int section = section;
+	int section = sectionPlayer;
 	float distanceAdjustment = 800.0;
 	float distanceAdjustment1 = 350.0;
 	if (section == 1) {
@@ -98,12 +98,12 @@ void getNormalFog(inout vec3 color, in vec3 viewPos, in vec3 worldPos, in vec3 a
 	vec3 baseFogCol = mix(blueGradient, vec3(0.02, 0.34, 0.61), 1.0 - topFade);
 
 	if (section >= 5 && section <= 8) {
-		animatedBlue = vec3(0.27, 0.27, 0.27);
+		blueGradient = vec3(0.27, 0.27, 0.27);
 		baseFogCol = mix(blueGradient, vec3(0.27, 0.27, 0.27), 1.0 - topFade); // closer to gray from L3S1 to L4S1
 	}
 
 	if (section > 8 && section <= 12) {
-		animatedBlue = vec3(0.59, 0.59, 0.59);
+		blueGradient = vec3(0.59, 0.59, 0.59);
 		baseFogCol = mix(blueGradient, vec3(0.59, 0.59, 0.59), 1.0 - topFade); // closer to white at L4S2
 	}
 

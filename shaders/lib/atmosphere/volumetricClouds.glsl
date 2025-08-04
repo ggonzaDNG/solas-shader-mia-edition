@@ -15,7 +15,7 @@ const float layersOuterRadius[] = float[](200.0, 400.0, 400.0, 400.0, 400.0, 400
 const float layer3LayersInnerRadius[] = float[](20.0, 20.0, 20.0, 20.0, 20.0, 20.0);
 const float layer3LayersOuterRadius[] = float[](250.0, 250.0, 250.0, 250.0, 250.0, 850.0);
 
-int section = getSection();
+int sectionPlayer = getSection();
 //
 
 float getSparkle(vec3 pos, float cloudLayer, float amount) {
@@ -62,7 +62,7 @@ vec2 getCloudCenter() {
 
 	// Align cloud centers to Abyss layer player is in.
 
-	int section = section;
+	int section = sectionPlayer;
 	int offsetX = cameraPositionInt.x - -23; // orth
 	int offsetZ = 67; // orth
 
@@ -110,7 +110,7 @@ float getCloudBaseHeight() {
 	// This function changes the base height (Y coord of the lowest cloud layer) of clouds to compensate going down the abyss.
 
 	float height = -1300.0; // Orth, section 0
-	int section = section;
+	int section = sectionPlayer;
 
 	switch (section) {
 		case 1: // L1S1
@@ -230,7 +230,7 @@ void computeVolumetricClouds(inout vec4 vc, in vec3 atmosphereColor, float z1, f
 	//Total visibility
 	float visibility = 1.0;
 
-	int section = section;
+	int section = sectionPlayer;
 
 	#if MC_VERSION >= 11900
 	visibility *= 1.0 - darknessFactor;
