@@ -1,7 +1,7 @@
 #include "/lib/util/AbyssUtil.glsl"
 #include "/lib/util/AbyssSharedUniforms.glsl"
 
-int sectionPlayer = getSection();
+int sectionPlayerFog = getSection();
 
 //1.19 Darkness Fog
 #if MC_VERSION >= 11900
@@ -63,7 +63,7 @@ void getNormalFog(inout vec3 color, in vec3 viewPos, in vec3 worldPos, in vec3 a
 	#endif
 
 	//
-	int section = sectionPlayer;
+	int section = sectionPlayerFog;
 	float distanceAdjustment = 800.0;
 	float distanceAdjustment1 = 350.0;
 	if (section == 1) {
