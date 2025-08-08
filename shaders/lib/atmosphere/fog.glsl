@@ -63,51 +63,82 @@ void getNormalFog(inout vec3 color, in vec3 viewPos, in vec3 worldPos, in vec3 a
 	#endif
 
 	//
-	int section = sectionPlayerFog;
-	float distanceAdjustment = 800.0;
-	float distanceAdjustment1 = 350.0;
-	if (section == 1) {
-		distanceAdjustment = 700.0;
-		distanceAdjustment1 = 450.0;
-	} else if (section == 2) {
-		distanceAdjustment = 600.0;
-		distanceAdjustment1 = 850.0;
-	} else if (section == 3) {
-		distanceAdjustment = 600.0;
-		distanceAdjustment1 = 850.0;
-	} else if (section == 5) {
-		distanceAdjustment = 1100.0;
-	} else if (section == 6) {
-		distanceAdjustment = 800.0;
-	} else if (section == 7) {
-		distanceAdjustment = 800.0;
-	} else if (section == 8) {
-		distanceAdjustment = 1000.0;
+	float distanceAdjustmentWhereFogStarts = 800.0;
+	float distanceAdjustmentWhereFogBecomesMoreDenseFromWhereFogStarts = 250.0;
+	float abyssDepth = clamp((-worldPos.y - cameraPosition.y) - distanceAdjustmentWhereFogBecomesMoreDenseFromWhereFogStarts, 1.0, 8192.0);
+	float depthDarkening = 0.0002 + (abyssDepth / distanceAdjustmentWhereFogStarts);
+	float topFade = clamp((worldPos.y + 128.0) / 256.0, 0.0, 1.0);
+	float fogDistanceToCover = 1024.0;
+	
+	vec3 gradient = vec3(0.04, 0.11, 0.2); // bluer
+	vec3 baseFogCol = mix(gradient, vec3(0.02, 0.34, 0.61), 1.0 - topFade);
+	
+	
+	switch (sectionPlayerFog) {
+		case 1:
+			distanceAdjustmentWhereFogStarts = 700.0;
+			distanceAdjustmentWhereFogBecomesMoreDenseFromWhereFogStarts = 250.0;
+			abyssDepth = clamp(abs(worldPos.y - cameraPosition.y) - distanceAdjustmentWhereFogBecomesMoreDenseFromWhereFogStarts, 1.0, 8192.0);
+			depthDarkening = 0.0002 + (abyssDepth / distanceAdjustmentWhereFogStarts);
+			break;
+		case 2:
+			distanceAdjustmentWhereFogStarts = 800.0;
+			distanceAdjustmentWhereFogBecomesMoreDenseFromWhereFogStarts = 250.0;
+			abyssDepth = clamp(abs(worldPos.y - cameraPosition.y) - distanceAdjustmentWhereFogBecomesMoreDenseFromWhereFogStarts, 1.0, 8192.0);
+			depthDarkening = 0.0002 + (abyssDepth / distanceAdjustmentWhereFogStarts);
+			break;
+		case 3:
+			distanceAdjustmentWhereFogStarts = 800.0;
+			distanceAdjustmentWhereFogBecomesMoreDenseFromWhereFogStarts = 250.0;
+			abyssDepth = clamp(abs(worldPos.y - cameraPosition.y) - distanceAdjustmentWhereFogBecomesMoreDenseFromWhereFogStarts, 1.0, 8192.0);
+			depthDarkening = 0.0002 + (abyssDepth / distanceAdjustmentWhereFogStarts);
+			break;
+		case 4:
+			distanceAdjustmentWhereFogStarts = 450.0;
+			distanceAdjustmentWhereFogBecomesMoreDenseFromWhereFogStarts = 350.0;
+			abyssDepth = clamp(abs(-worldPos.y - cameraPosition.y) - distanceAdjustmentWhereFogBecomesMoreDenseFromWhereFogStarts, 1.0, 8192.0);
+			depthDarkening = clamp(0.0002 + (abyssDepth / distanceAdjustmentWhereFogStarts), 0.2, 2.0);
+			break;
+		case 5:
+			distanceAdjustmentWhereFogStarts = 150.0;
+			distanceAdjustmentWhereFogBecomesMoreDenseFromWhereFogStarts = 1.0;
+			abyssDepth = clamp(abs(-worldPos.y - cameraPosition.y) - distanceAdjustmentWhereFogBecomesMoreDenseFromWhereFogStarts, 1.0, 8192.0);
+			depthDarkening = clamp(0.0002 + (abyssDepth / distanceAdjustmentWhereFogStarts), 0.2, 2.0);
+			break;
+		case 6:
+			distanceAdjustmentWhereFogBecomesMoreDenseFromWhereFogStarts = 0.0;
+			abyssDepth = clamp(abs(-worldPos.y - cameraPosition.y) - distanceAdjustmentWhereFogBecomesMoreDenseFromWhereFogStarts, 1.0, 8192.0);
+			depthDarkening = clamp(0.0002 + abyssDepth, 0.0, 1.0);
+			break;
+		case 7:
+			distanceAdjustmentWhereFogBecomesMoreDenseFromWhereFogStarts = 0.0;
+			abyssDepth = clamp(abs(-worldPos.y - cameraPosition.y) - distanceAdjustmentWhereFogBecomesMoreDenseFromWhereFogStarts, 1.0, 8192.0);
+			depthDarkening = clamp(0.0002 + abyssDepth, 0.0, 1.0);
+			break;
+		case 8:
+			distanceAdjustmentWhereFogStarts = 1000.0;
+			break;
+		default:
+			break;
 	}
 
-	float abyssDepth = clamp((-worldPos.y - cameraPosition.y) - distanceAdjustment1, 0.0, 2048.0);
-	float depthDarkening = 0.00002 + (abyssDepth / distanceAdjustment);
-	fogDensity *= depthDarkening;
+	fogDensity *= depthDarkening / 1.5;
 
     float fog = 1.0 - exp(-(0.005 + wetness * caveFactor * 0.0025) * pow(lViewPos, 0.85) * fogDistance);
 		  fog = clamp(fog * fogDensity * fogAltitude, 0.0, 1.0);
 
-	vec3 blueGradient = vec3(0.04, 0.11, 0.2);
-
-	float topFade = clamp((worldPos.y + cameraPosition.y + 128.0) / 256.0, 0.0, 1.0);
-	vec3 baseFogCol = mix(blueGradient, vec3(0.02, 0.34, 0.61), 1.0 - topFade);
-
-	if (section >= 5 && section <= 8) {
-		blueGradient = vec3(0.27, 0.27, 0.27);
-		baseFogCol = mix(blueGradient, vec3(0.27, 0.27, 0.27), 1.0 - topFade); // closer to gray from L3S1 to L4S1
+	if (sectionPlayerFog >= 3 && sectionPlayerFog < 8) {
+		gradient = vec3(0.87, 0.87, 0.87);
+		baseFogCol = mix(gradient, vec3(0.87, 0.87, 0.87), 1.0 - topFade);
+		fogDistanceToCover = 4096.0;
 	}
 
-	if (section > 8 && section <= 12) {
-		blueGradient = vec3(0.59, 0.59, 0.59);
-		baseFogCol = mix(blueGradient, vec3(0.59, 0.59, 0.59), 1.0 - topFade); // closer to white at L4S2
+	if (sectionPlayerFog > 8 && sectionPlayerFog <= 12) {
+		gradient = vec3(0.59, 0.59, 0.59);
+		baseFogCol = mix(gradient, vec3(0.59, 0.59, 0.59), 1.0 - topFade);
 	}
 
-	vec3 fogCol = mix(baseFogCol, vec3(0.0), clamp(abyssDepth / 1024.0, 0.0, 1.0));
+	vec3 fogCol = mix(baseFogCol, vec3(0.0), clamp(abyssDepth / fogDistanceToCover, 0.0, 1.0));
 	//
 	
 	//Distant Fade
